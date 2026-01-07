@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ecs-monitoring-recommendations"
+version = "1.0.0"
+description = "ECS Monitoring & AI Recommendations System"
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+license = {text = "MIT"}
+authors = [
+    {name = "Prashant Gupta", email = "prashantgupta036@gmail.com"}
+]
+keywords = ["aws", "ecs", "monitoring", "ai", "recommendations", "bedrock", "claude"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: System :: Monitoring",
+]
+
+[project.urls]
+Homepage = "https://github.com/prashantgupta123/aws-ecs-service-recommendations"
+Documentation = "https://github.com/prashantgupta123/aws-ecs-service-recommendations#readme"
+Repository = "https://github.com/prashantgupta123/aws-ecs-service-recommendations"
+Issues = "https://github.com/prashantgupta123/aws-ecs-service-recommendations/issues"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0",
+    "flake8>=6.0",
+    "mypy>=1.0",
+]
+
+[tool.black]
+line-length = 88
+target-version = ['py313']
+
+[tool.mypy]
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true

@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  aws-ecs-recommendations:
+    build: .
+    ports:
+      - "${PORT:-8000}:${PORT:-8000}"
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-ap-south-1}
+      - BEDROCK_MODEL_NAME=${BEDROCK_MODEL_NAME:-apac.anthropic.claude-3-7-sonnet-20250219-v1:0}
+      - PORT=${PORT:-8000}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${PORT:-8000}/health"]
+      interval: ${DOCKER_HEALTH_CHECK_INTERVAL:-30}s
+      timeout: ${DOCKER_HEALTH_CHECK_TIMEOUT:-10}s
+      retries: ${DOCKER_HEALTH_CHECK_RETRIES:-3}
+      start_period: ${DOCKER_HEALTH_CHECK_START_PERIOD:-40}s

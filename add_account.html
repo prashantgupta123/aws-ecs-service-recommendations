@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Add AWS Account - ECS Infrastructure Monitor</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #2c3e50 0%, #34495e 25%, #2c3e50 50%, #34495e 75%, #2c3e50 100%); background-size: 400% 400%; animation: gradientShift 15s ease infinite; min-height: 100vh; margin: 0; display: flex; }
+        .sidebar { width: 250px; background: rgba(44,62,80,0.95); backdrop-filter: blur(20px); border-right: 1px solid rgba(255,255,255,0.1); position: fixed; height: 100vh; z-index: 100; transition: all 0.3s; }
+        .sidebar-header { padding: 25px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .sidebar-title { color: #74b9ff; font-size: 1.3em; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        .sidebar-nav { padding: 20px 0; }
+        .nav-item { display: block; padding: 15px 25px; color: rgba(255,255,255,0.8); text-decoration: none; transition: all 0.3s; border-left: 3px solid transparent; }
+        .nav-item:hover { background: rgba(255,255,255,0.1); color: white; border-left-color: #74b9ff; }
+        .nav-item.active { background: rgba(116,185,255,0.2); color: #74b9ff; border-left-color: #74b9ff; }
+        .nav-item i { margin-right: 10px; width: 20px; text-align: center; }
+        .main-content { margin-left: 250px; flex: 1; padding: 20px; }
+        .sidebar-toggle { display: none; position: fixed; top: 20px; left: 20px; z-index: 101; background: rgba(116,185,255,0.2); color: #74b9ff; border: 1px solid rgba(116,185,255,0.4); padding: 10px; border-radius: 8px; cursor: pointer; backdrop-filter: blur(10px); }
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .main-content { margin-left: 0; }
+            .sidebar-toggle { display: block; }
+        }
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .container { max-width: 800px; margin: 0 auto; width: 100%; }
+        .header { text-align: center; color: #2c3e50; margin-bottom: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); color: white; }
+        .header p { color: rgba(255,255,255,0.9); font-size: 1.1em; }
+        .add-account-form { background: rgba(52,73,94,0.8); border-radius: 25px; padding: 35px; margin-bottom: 35px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); }
+        .add-account-form h3 { color: #74b9ff; margin-bottom: 25px; font-size: 1.4em; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .form-grid input, .form-grid select { padding: 15px; border: none; border-radius: 15px; font-size: 14px; transition: all 0.3s; background: rgba(44,62,80,0.6); color: #ecf0f1; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        .form-grid input::placeholder { color: #bdc3c7; }
+        .form-grid select option { background: #2c3e50; color: #ecf0f1; }
+        .form-grid input:focus, .form-grid select:focus { outline: none; background: rgba(44,62,80,0.8); transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,0,0,0.3); border-color: rgba(116,185,255,0.5); }
+        .add-btn { background: rgba(116,185,255,0.2); color: #74b9ff; border: 1px solid rgba(116,185,255,0.4); padding: 15px 35px; border-radius: 25px; cursor: pointer; font-size: 16px; font-weight: bold; transition: all 0.3s; backdrop-filter: blur(10px); }
+        .add-btn:hover { transform: translateY(-3px); background: rgba(116,185,255,0.3); box-shadow: 0 8px 25px rgba(116,185,255,0.2); }
+        .back-btn { background: rgba(149,165,166,0.2); color: #95a5a6; border: 1px solid rgba(149,165,166,0.4); padding: 12px 25px; border-radius: 25px; cursor: pointer; font-size: 14px; font-weight: bold; transition: all 0.3s; backdrop-filter: blur(10px); text-decoration: none; display: inline-block; margin-bottom: 20px; }
+        .back-btn:hover { transform: translateY(-2px); background: rgba(149,165,166,0.3); box-shadow: 0 8px 25px rgba(149,165,166,0.2); }
+        .auth-info { background: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; margin-bottom: 25px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); }
+        .auth-info h4 { color: #74b9ff; margin-bottom: 15px; font-size: 1.2em; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        .auth-info ul { color: rgba(255,255,255,0.9); line-height: 1.6; padding-left: 20px; }
+        .auth-info li { margin-bottom: 8px; }
+    </style>
+</head>
+<body>
+    <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-title">🏗️ ECS Monitor</div>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/" class="nav-item">
+                <i>📈</i> Analytics
+            </a>
+            <a href="/services-dashboard" class="nav-item">
+                <i>🏠</i> Services
+            </a>
+            <a href="/recommendations-dashboard" class="nav-item">
+                <i>📊</i> Recommendations
+            </a>
+            <a href="/cluster-dashboard" class="nav-item">
+                <i>🎯</i> Cluster Analysis
+            </a>
+            <a href="/add-account" class="nav-item active">
+                <i>➕</i> Add Account
+            </a>
+        </nav>
+    </div>
+
+    <div class="main-content">
+        <div class="container">
+            <div class="header">
+                <h1>➕ Add AWS Account</h1>
+                <p>Configure AWS credentials to start monitoring ECS infrastructure</p>
+            </div>
+
+            <a href="/" class="back-btn">← Back to Dashboard</a>
+
+            <div class="auth-info">
+                <h4>🔐 Authentication Methods</h4>
+                <ul>
+                    <li><strong>Access Key & Secret:</strong> Traditional AWS credentials (not recommended for production)</li>
+                    <li><strong>AWS Profile:</strong> Use AWS CLI profiles from ~/.aws/credentials</li>
+                    <li><strong>IAM Role ARN:</strong> Assume IAM roles via STS (recommended for cross-account access)</li>
+                    <li><strong>Session Token:</strong> Temporary credentials with session token</li>
+                    <li><strong>Default Credentials:</strong> Environment variables, instance profiles, etc.</li>
+                </ul>
+            </div>
+
+            <div class="add-account-form">
+                <h3>Account Configuration</h3>
+                <div style="margin-bottom: 15px;">
+                    <label style="font-weight: bold; margin-right: 15px; color: #74b9ff; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); font-size: 1.1em;">Authentication Method:</label>
+                    <select id="authMethod" onchange="toggleAuthFields()" style="padding: 15px; border: none; border-radius: 15px; background: rgba(44,62,80,0.6); color: #ecf0f1; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); font-size: 14px;">
+                        <option value="access_key">Access Key & Secret</option>
+                        <option value="profile">AWS Profile</option>
+                        <option value="role">IAM Role ARN</option>
+                        <option value="session_token">Session Token</option>
+                        <option value="default">Default Credentials</option>
+                    </select>
+                </div>
+                <form id="addAccount">
+                    <div class="form-grid">
+                        <input name="account_id" placeholder="Account ID" required>
+                        <input name="account_name" placeholder="Account Name" required>
+                        <input name="region" placeholder="Region (e.g., ap-south-1, us-east-1)" value="ap-south-1">
+
+                        <!-- Access Key fields -->
+                        <div id="accessKeyFields">
+                            <input name="access_key" placeholder="Access Key" required>
+                            <input name="secret_key" placeholder="Secret Key" type="password" required>
+                        </div>
+
+                        <!-- Profile field -->
+                        <div id="profileFields" style="display: none;">
+                            <input name="profile_name" placeholder="AWS Profile Name">
+                        </div>
+
+                        <!-- Role ARN field -->
+                        <div id="roleFields" style="display: none;">
+                            <input name="role_arn" placeholder="IAM Role ARN (arn:aws:iam::...)">
+                        </div>
+
+                        <!-- Session Token fields -->
+                        <div id="sessionTokenFields" style="display: none;">
+                            <input name="access_key" placeholder="Access Key">
+                            <input name="secret_key" placeholder="Secret Key" type="password">
+                            <input name="session_token" placeholder="Session Token" type="password">
+                        </div>
+                    </div>
+                    <button type="submit" class="add-btn">Add Account & Start Monitoring</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleAuthFields() {
+            const authMethod = document.getElementById('authMethod').value;
+            const accessKeyFields = document.getElementById('accessKeyFields');
+            const profileFields = document.getElementById('profileFields');
+            const roleFields = document.getElementById('roleFields');
+            const sessionTokenFields = document.getElementById('sessionTokenFields');
+
+            // Hide all fields first
+            accessKeyFields.style.display = 'none';
+            profileFields.style.display = 'none';
+            roleFields.style.display = 'none';
+            sessionTokenFields.style.display = 'none';
+
+            // Clear required attributes
+            document.querySelectorAll('#addAccount input').forEach(input => {
+                input.removeAttribute('required');
+            });
+
+            // Set required for common fields
+            document.querySelector('input[name="account_id"]').setAttribute('required', '');
+            document.querySelector('input[name="account_name"]').setAttribute('required', '');
+
+            // Show relevant fields based on auth method
+            switch(authMethod) {
+                case 'access_key':
+                    accessKeyFields.style.display = 'block';
+                    accessKeyFields.querySelector('input[name="access_key"]').setAttribute('required', '');
+                    accessKeyFields.querySelector('input[name="secret_key"]').setAttribute('required', '');
+                    break;
+                case 'profile':
+                    profileFields.style.display = 'block';
+                    profileFields.querySelector('input[name="profile_name"]').setAttribute('required', '');
+                    break;
+                case 'role':
+                    roleFields.style.display = 'block';
+                    roleFields.querySelector('input[name="role_arn"]').setAttribute('required', '');
+                    break;
+                case 'session_token':
+                    sessionTokenFields.style.display = 'block';
+                    sessionTokenFields.querySelector('input[name="access_key"]').setAttribute('required', '');
+                    sessionTokenFields.querySelector('input[name="secret_key"]').setAttribute('required', '');
+                    sessionTokenFields.querySelector('input[name="session_token"]').setAttribute('required', '');
+                    break;
+                case 'default':
+                    // No additional fields needed for default credentials
+                    break;
+            }
+        }
+
+        document.getElementById('addAccount').onsubmit = async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+
+            // Clean up empty fields
+            Object.keys(data).forEach(key => {
+                if (!data[key]) {
+                    delete data[key];
+                }
+            });
+
+            try {
+                const response = await fetch('/accounts', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    alert('✅ Account added successfully!');
+                    window.location.href = '/';
+                } else {
+                    const error = await response.json();
+                    alert('❌ Error adding account: ' + (error.detail || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('❌ Error adding account: ' + error.message);
+            }
+        };
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('open');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ECS Infrastructure Monitor - Optimized</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #2c3e50 0%, #34495e 25%, #2c3e50 50%, #34495e 75%, #2c3e50 100%); background-size: 400% 400%; animation: gradientShift 15s ease infinite; min-height: 100vh; margin: 0; display: flex; }
+        .sidebar { width: 250px; background: rgba(44,62,80,0.95); backdrop-filter: blur(20px); border-right: 1px solid rgba(255,255,255,0.1); position: fixed; height: 100vh; z-index: 100; transition: all 0.3s; }
+        .sidebar-header { padding: 25px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .sidebar-title { color: #74b9ff; font-size: 1.3em; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        .sidebar-nav { padding: 20px 0; }
+        .nav-item { display: block; padding: 15px 25px; color: rgba(255,255,255,0.8); text-decoration: none; transition: all 0.3s; border-left: 3px solid transparent; }
+        .nav-item:hover { background: rgba(255,255,255,0.1); color: white; border-left-color: #74b9ff; }
+        .nav-item.active { background: rgba(116,185,255,0.2); color: #74b9ff; border-left-color: #74b9ff; }
+        .nav-item i { margin-right: 10px; width: 20px; text-align: center; }
+        .main-content { margin-left: 250px; flex: 1; padding: 20px; }
+        .sidebar-toggle { display: none; position: fixed; top: 20px; left: 20px; z-index: 101; background: rgba(116,185,255,0.2); color: #74b9ff; border: 1px solid rgba(116,185,255,0.4); padding: 10px; border-radius: 8px; cursor: pointer; backdrop-filter: blur(10px); }
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .main-content { margin-left: 0; }
+            .sidebar-toggle { display: block; }
+        }
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .container { max-width: 1400px; margin: 0 auto; width: 100%; }
+        .header { text-align: center; color: #2c3e50; margin-bottom: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); color: white; }
+        .header p { color: rgba(255,255,255,0.9); font-size: 1.1em; }
+
+        /* Filter and Pagination Controls */
+        .controls-section { background: rgba(52,73,94,0.8); border-radius: 25px; padding: 25px; margin-bottom: 25px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); }
+        .controls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .control-group { display: flex; flex-direction: column; }
+        .control-label { color: #74b9ff; font-weight: bold; margin-bottom: 8px; font-size: 0.9em; }
+        .control-input { padding: 12px; border: none; border-radius: 12px; background: rgba(44,62,80,0.6); color: #ecf0f1; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        .control-input:focus { outline: none; background: rgba(44,62,80,0.8); border-color: rgba(116,185,255,0.5); }
+        .control-button { background: rgba(116,185,255,0.2); color: #74b9ff; border: 1px solid rgba(116,185,255,0.4); padding: 12px 20px; border-radius: 12px; cursor: pointer; font-weight: bold; transition: all 0.3s; backdrop-filter: blur(10px); }
+        .control-button:hover { background: rgba(116,185,255,0.3); transform: translateY(-2px); }
+
+        /* Pagination */
+        .pagination { display: flex; justify-content: center; align-items: center; gap: 10px; margin: 20px 0; }
+        .pagination button { background: rgba(116,185,255,0.2); color: #74b9ff; border: 1px solid rgba(116,185,255,0.4); padding: 8px 12px; border-radius: 8px; cursor: pointer; transition: all 0.3s; }
+        .pagination button:hover { background: rgba(116,185,255,0.3); }
+        .pagination button.active { background: rgba(116,185,255,0.4); }
+        .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .pagination-info { color: #ecf0f1; margin: 0 15px; }
+
+        /* Account Cards */
+        .account-card { background: rgba(255,255,255,0.1); border-radius: 25px; margin-bottom: 35px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); overflow: hidden; backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.2); }
+        .account-header { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        .account-header h2 { font-size: 1.6em; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.2); }
+        .account-id { background: rgba(255,255,255,0.25); padding: 8px 15px; border-radius: 20px; font-size: 0.9em; font-weight: bold; backdrop-filter: blur(10px); }
+        .status { padding: 8px 16px; border-radius: 20px; font-size: 0.85em; font-weight: bold; text-transform: uppercase; }
+        .status.active { background: linear-gradient(45deg, #2ecc71, #27ae60); color: white; box-shadow: 0 3px 10px rgba(46,204,113,0.3); }
+        .status.inactive { background: linear-gradient(45deg, #e74c3c, #c0392b); color: white; box-shadow: 0 3px 10px rgba(231,76,60,0.3); }
+
+        /* Lazy Loading */
+        .loading-placeholder { background: rgba(52,73,94,0.6); border-radius: 15px; padding: 20px; text-align: center; color: #bdc3c7; margin: 10px 0; }
+        .loading-spinner { border: 3px solid rgba(255,255,255,0.3); border-top: 3px solid #74b9ff; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto 10px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Existing styles for clusters and services */
+        .clusters-container { padding: 30px; background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); }
+        .cluster-card { background: rgba(52,73,94,0.8); border-radius: 20px; margin-bottom: 25px; box-shadow: 0 15px 35px rgba(0,0,0,0.2); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); overflow: hidden; }
+        .cluster-header { display: flex; justify-content: space-between; align-items: center; padding: 25px; cursor: pointer; transition: all 0.3s; }
+        .cluster-header:hover { background: rgba(255,255,255,0.05); }
+        .cluster-name { color: #74b9ff; font-size: 1.4em; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); margin: 0; margin-bottom: 20px;}
+        .cluster-toggle { color: #74b9ff; font-size: 1.2em; transition: transform 0.3s; }
+        .cluster-toggle.expanded { transform: rotate(90deg); }
+        .cluster-content { padding: 0 25px 25px 25px; display: none; }
+        .cluster-content.expanded { display: block; }
+        .cluster-stats { display: flex; gap: 20px; font-size: 0.9em; color: #bdc3c7; }
+        .cluster-stat { background: rgba(255,255,255,0.1); padding: 8px 15px; border-radius: 10px; backdrop-filter: blur(10px); }
+        .services-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+        .service-card { background: rgba(44,62,80,0.7); border-radius: 20px; padding: 25px; box-shadow: 0 15px 35px rgba(0,0,0,0.2); transition: all 0.3s; color: #ecf0f1; backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); }
+        .service-card:hover { transform: translateY(-8px); box-shadow: 0 20px 40px rgba(0,0,0,0.3); background: rgba(44,62,80,0.9); }
+        .service-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .service-header h4 { color: #74b9ff; font-size: 1.2em; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        .service-status { padding: 8px 15px; border-radius: 15px; font-size: 0.8em; font-weight: bold; text-transform: uppercase; }
+        .service-status.ACTIVE { background: rgba(46,204,113,0.2); color: #2ecc71; border: 1px solid rgba(46,204,113,0.4); }
+        .service-status.DRAINING { background: rgba(243,156,18,0.2); color: #f39c12; border: 1px solid rgba(243,156,18,0.4); }
+        .info-icon { background: rgba(255,255,255,0.2); padding: 5px 8px; border-radius: 50%; backdrop-filter: blur(10px); transition: all 0.3s; }
+        .info-icon:hover { background: rgba(255,255,255,0.3); transform: scale(1.1); }
+        .service-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px; }
+        .metric { text-align: center; background: rgba(52,73,94,0.6); padding: 15px; border-radius: 15px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        .metric-label { display: block; font-size: 0.85em; color: #bdc3c7; font-weight: 500; }
+        .metric-value { display: block; font-weight: bold; color: #ecf0f1; font-size: 1.2em; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); }
+        .recommend-btn { background: rgba(116,185,255,0.2); color: #74b9ff; border: 1px solid rgba(116,185,255,0.4); padding: 12px 20px; border-radius: 25px; cursor: pointer; font-size: 0.9em; font-weight: bold; width: 100%; transition: all 0.3s; backdrop-filter: blur(10px); }
+        .recommend-btn:hover { transform: translateY(-2px); background: rgba(116,185,255,0.3); box-shadow: 0 8px 25px rgba(116,185,255,0.2); }
+        .account-actions { background: rgba(255,255,255,0.1); padding: 25px 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; backdrop-filter: blur(15px); border-top: 1px solid rgba(255,255,255,0.2); }
+        .account-recommend-btn { background: linear-gradient(45deg, #a29bfe, #6c5ce7); color: white; border: none; padding: 12px 25px; border-radius: 25px; cursor: pointer; margin-right: 10px; font-weight: bold; transition: all 0.3s; box-shadow: 0 5px 15px rgba(162,155,254,0.3); }
+        .account-recommend-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(162,155,254,0.4); }
+        .refresh-btn { color: white; border: none; padding: 12px 25px; border-radius: 25px; cursor: pointer; margin-right: 10px; font-weight: bold; transition: all 0.3s; }
+        .refresh-btn:nth-child(2) { background: linear-gradient(45deg, #00cec9, #00b894); box-shadow: 0 5px 15px rgba(0,206,201,0.3); }
+        .refresh-btn:nth-child(2):hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,206,201,0.4); }
+        .refresh-btn:nth-child(3) { background: linear-gradient(45deg, #fd79a8, #e84393); box-shadow: 0 5px 15px rgba(253,121,168,0.3); }
+        .refresh-btn:nth-child(3):hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(253,121,168,0.4); }
+        .refresh-btn:nth-child(4) { background: linear-gradient(45deg, #fdcb6e, #e17055); box-shadow: 0 5px 15px rgba(253,203,110,0.3); }
+        .refresh-btn:nth-child(4):hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(253,203,110,0.4); }
+        .last-updated { color: #6c5ce7; font-size: 0.9em; font-weight: 500; }
+
+        /* Modal styles */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); backdrop-filter: blur(5px); }
+        .modal-content { background: rgba(44,62,80,0.95); margin: 3% auto; padding: 30px; border-radius: 25px; width: 85%; max-width: 900px; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.5); color: white; backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.2); }
+        .close { color: rgba(255,255,255,0.8); float: right; font-size: 32px; font-weight: bold; cursor: pointer; transition: all 0.3s; }
+        .close:hover { color: white; transform: scale(1.1); }
+        #loading { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(255,255,255,0.15); padding: 40px; border-radius: 25px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); text-align: center; z-index: 1001; backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.2); color: white; }
+    </style>
+</head>
+<body>
+    <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-title">🏗️ ECS Monitor</div>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/" class="nav-item">
+                <i>📈</i> Analytics
+            </a>
+            <a href="/services-dashboard-optimized" class="nav-item active">
+                <i>⚡</i> Services (Optimized)
+            </a>
+            <a href="/dashboard-comparison" class="nav-item">
+                <i>🔄</i> Switch Dashboard
+            </a>
+            <a href="/recommendations-dashboard" class="nav-item">
+                <i>📊</i> Recommendations
+            </a>
+            <a href="/add-account" class="nav-item">
+                <i>➕</i> Add Account
+            </a>
+        </nav>
+    </div>
+
+    <div class="main-content">
+        <div class="container">
+        <div class="header">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                <div>
+                    <h1>🏗️ ECS Services Dashboard (Optimized)</h1>
+                    <p>AI-Powered Container Orchestration Management</p>
+                </div>
+                <div id="userInfo" style="text-align: right; color: rgba(255,255,255,0.9); font-size: 0.9em;">
+                    <div style="background: rgba(255,255,255,0.15); padding: 12px 20px; border-radius: 15px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2);">
+                        <div style="font-weight: bold; margin-bottom: 4px;">👤 <span id="userName">Loading...</span></div>
+                        <div style="font-size: 0.85em; opacity: 0.8;">📧 <span id="userEmail">Loading...</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter and Pagination Controls -->
+        <div class="controls-section">
+            <h3 style="color: #74b9ff; margin-bottom: 20px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">🔍 Filter & Navigation</h3>
+            <div class="controls-grid">
+                <div class="control-group">
+                    <label class="control-label">Search Accounts</label>
+                    <input type="text" id="searchInput" class="control-input" placeholder="Search by account name or ID..." onkeyup="filterAccounts()">
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Status Filter</label>
+                    <select id="statusFilter" class="control-input" onchange="filterAccounts()">
+                        <option value="">All Status</option>
+                        <option value="active">Active Only</option>
+                        <option value="inactive">Inactive Only</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Items Per Page</label>
+                    <select id="itemsPerPage" class="control-input" onchange="changeItemsPerPage()">
+                        <option value="2">2 per page</option>
+                        <option value="5" selected>5 per page</option>
+                        <option value="10">10 per page</option>
+                        <option value="20">20 per page</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Quick Actions</label>
+                    <button class="control-button" onclick="loadAccounts()">🔄 Refresh All</button>
+                </div>
+            </div>
+
+            <!-- Pagination Controls -->
+            <div class="pagination" id="pagination">
+                <button onclick="goToPage(1)" id="firstPage">First</button>
+                <button onclick="previousPage()" id="prevPage">Previous</button>
+                <span class="pagination-info" id="pageInfo">Page 1 of 1</span>
+                <button onclick="nextPage()" id="nextPage">Next</button>
+                <button onclick="goToPage(totalPages)" id="lastPage">Last</button>
+            </div>
+        </div>
+
+        <div id="accounts"></div>
+        </div>
+    </div>
+
+    <div id="loading"></div>
+
+    <!-- Modals -->
+    <div id="recommendationsModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2 id="recommendationsTitle" style="margin-bottom: 20px;"></h2>
+            <div id="recommendationsContent"></div>
+        </div>
+    </div>
+
+    <div id="serviceDetailsModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeServiceDetailsModal()">&times;</span>
+            <h2 id="serviceDetailsTitle" style="margin-bottom: 20px;"></h2>
+            <div id="serviceDetailsContent"></div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables for pagination and filtering
+        let allAccounts = [];
+        let filteredAccounts = [];
+        let currentPage = 1;
+        let itemsPerPage = 5;
+        let totalPages = 1;
+
+        async function loadAccounts() {
+            showLoading('Loading accounts...');
+            try {
+                const resp = await fetch('/accounts');
+                allAccounts = await resp.json();
+                filterAccounts();
+                hideLoading();
+            } catch (error) {
+                hideLoading();
+                console.error('Error loading accounts:', error);
+            }
+        }
+
+        function filterAccounts() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+
+            filteredAccounts = allAccounts.filter(account => {
+                const matchesSearch = !searchTerm ||
+                    account.account_name.toLowerCase().includes(searchTerm) ||
+                    account.account_id.toLowerCase().includes(searchTerm);
+
+                const matchesStatus = !statusFilter || account.status === statusFilter;
+
+                return matchesSearch && matchesStatus;
+            });
+
+            totalPages = Math.ceil(filteredAccounts.length / itemsPerPage);
+            currentPage = 1;
+            updatePagination();
+            displayAccounts();
+        }
+
+        function displayAccounts() {
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const accountsToShow = filteredAccounts.slice(startIndex, endIndex);
+
+            document.getElementById('accounts').innerHTML = accountsToShow.map(acc =>
+                `<div class="account-card" data-account-id="${acc.account_id}">
+                    <div class="account-header">
+                        <h2>${acc.account_name || acc.account_id}</h2>
+                        <span class="account-id">${acc.account_id}</span>
+                        <span class="status ${acc.status}">${acc.status}</span>
+                    </div>
+                    <div class="clusters-container" id="clusters-${acc.account_id}">
+                        <div class="loading-placeholder">
+                            <div class="loading-spinner"></div>
+                            <p>Loading cluster details...</p>
+                        </div>
+                    </div>
+                    <div class="account-actions">
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button class="account-recommend-btn" onclick="getRecommendations('${acc.account_id}')">
+                                📊 Get Account-wide Recommendations
+                            </button>
+                            <button class="refresh-btn" onclick="refreshAccountData('${acc.account_id}')">
+                                🔄 Refresh Data
+                            </button>
+                        </div>
+                        <span class="last-updated">Last updated: ${acc.last_updated}</span>
+                    </div>
+                </div>`
+            ).join('');
+
+            // Lazy load cluster details for visible accounts
+            accountsToShow.forEach(acc => {
+                setTimeout(() => loadClusterDetails(acc), 100);
+            });
+        }
+
+        async function loadClusterDetails(acc) {
+            const clustersContainer = document.getElementById(`clusters-${acc.account_id}`);
+
+            if (!acc.cluster_details || Object.keys(acc.cluster_details).length === 0) {
+                clustersContainer.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #bdc3c7;">
+                        <h3>No clusters found</h3>
+                        <p>This account has no ECS clusters or they haven't been discovered yet.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const clusterHtml = Object.entries(acc.cluster_details).map(([cluster, services]) => {
+                const totalServices = services.length;
+                const activeServices = services.filter(s => s.status === 'ACTIVE').length;
+                const totalTasks = services.reduce((sum, s) => sum + s.running_count, 0);
+                const avgCpu = services.length > 0 ? Math.round(services.reduce((sum, s) => sum + (s.cpu_avg || 0), 0) / services.length) : 0;
+                const avgMemory = services.length > 0 ? Math.round(services.reduce((sum, s) => sum + (s.memory_avg || 0), 0) / services.length) : 0;
+
+                return `<div class="cluster-card">
+                    <div class="cluster-header" onclick="toggleCluster('${cluster}')">
+                        <div>
+                            <h3 class="cluster-name">🏗️ ${cluster}</h3>
+                            <div class="cluster-stats">
+                                <span class="cluster-stat">📊 ${totalServices} Services</span>
+                                <span class="cluster-stat">✅ ${activeServices} Active</span>
+                                <span class="cluster-stat">🔧 ${totalTasks} Tasks</span>
+                                <span class="cluster-stat">🖥️ ${avgCpu}% CPU</span>
+                                <span class="cluster-stat">💾 ${avgMemory}% Memory</span>
+                            </div>
+                        </div>
+                        <span class="cluster-toggle" id="toggle-${cluster}">▶</span>
+                    </div>
+                    <div class="cluster-content" id="content-${cluster}">
+                        <div class="services-grid">
+                            ${services.map(service =>
+                                `<div class="service-card">
+                                    <div class="service-header">
+                                        <h4>⚙️ ${service.name}</h4>
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <span class="info-icon" onclick="showServiceDetails('${acc.account_id}', '${cluster}', '${service.name}')" title="View detailed service information" style="cursor: pointer; color: #667eea; font-size: 16px; font-weight: bold;">ℹ️</span>
+                                            <span class="service-status ${service.status}">${service.status}</span>
+                                        </div>
+                                    </div>
+                                    <div class="service-metrics">
+                                        <div class="metric">
+                                            <span class="metric-label">Tasks:</span>
+                                            <span class="metric-value">${service.running_count}/${service.desired_count}</span>
+                                        </div>
+                                        <div class="metric">
+                                            <span class="metric-label">CPU:</span>
+                                            <span class="metric-value">${service.cpu_avg || 'N/A'}%</span>
+                                        </div>
+                                        <div class="metric">
+                                            <span class="metric-label">Memory:</span>
+                                            <span class="metric-value">${service.memory_avg || 'N/A'}%</span>
+                                        </div>
+                                    </div>
+                                    <button class="recommend-btn" onclick="getServiceRecommendations('${acc.account_id}', '${cluster}', '${service.name}')">
+                                        🤖 Get AI Recommendations
+                                    </button>
+                                </div>`
+                            ).join('')}
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+
+            clustersContainer.innerHTML = clusterHtml;
+        }
+
+        function updatePagination() {
+            const pageInfo = document.getElementById('pageInfo');
+            const firstPage = document.getElementById('firstPage');
+            const prevPage = document.getElementById('prevPage');
+            const nextPage = document.getElementById('nextPage');
+            const lastPage = document.getElementById('lastPage');
+
+            pageInfo.textContent = `Page ${currentPage} of ${totalPages} (${filteredAccounts.length} accounts)`;
+
+            firstPage.disabled = currentPage === 1;
+            prevPage.disabled = currentPage === 1;
+            nextPage.disabled = currentPage === totalPages;
+            lastPage.disabled = currentPage === totalPages;
+        }
+
+        function changeItemsPerPage() {
+            itemsPerPage = parseInt(document.getElementById('itemsPerPage').value);
+            totalPages = Math.ceil(filteredAccounts.length / itemsPerPage);
+            currentPage = 1;
+            updatePagination();
+            displayAccounts();
+        }
+
+        function goToPage(page) {
+            if (page >= 1 && page <= totalPages) {
+                currentPage = page;
+                updatePagination();
+                displayAccounts();
+            }
+        }
+
+        function nextPage() {
+            if (currentPage < totalPages) {
+                currentPage++;
+                updatePagination();
+                displayAccounts();
+            }
+        }
+
+        function previousPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                updatePagination();
+                displayAccounts();
+            }
+        }
+
+        function toggleCluster(clusterId) {
+            const content = document.getElementById(`content-${clusterId}`);
+            const toggle = document.getElementById(`toggle-${clusterId}`);
+
+            if (content.classList.contains('expanded')) {
+                content.classList.remove('expanded');
+                toggle.classList.remove('expanded');
+                toggle.textContent = '▶';
+            } else {
+                content.classList.add('expanded');
+                toggle.classList.add('expanded');
+                toggle.textContent = '▼';
+            }
+        }
+
+        function showLoading(message) {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('loading').innerHTML = `<div class="loading-spinner"></div><p>${message}</p>`;
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        async function loadUserInfo() {
+            try {
+                const resp = await fetch('/user-info');
+                const userInfo = await resp.json();
+                document.getElementById('userName').textContent = userInfo.name;
+                document.getElementById('userEmail').textContent = userInfo.email;
+            } catch (error) {
+                console.error('Error loading user info:', error);
+                document.getElementById('userName').textContent = 'Unknown User';
+                document.getElementById('userEmail').textContent = 'unknown@example.com';
+            }
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('open');
+        }
+
+        // Add missing functions from original dashboard
+        let currentAccountId = null;
+        let currentRecommendationContext = null;
+
+        async function getRecommendations(accountId) {
+            currentAccountId = accountId;
+            showLoading('Getting account-wide recommendations...');
+            try {
+                const resp = await fetch(`/recommendations/${accountId}`);
+                const recs = await resp.json();
+                showRecommendations(recs, 'Account-wide Recommendations');
+            } catch (error) {
+                hideLoading();
+                alert('Error getting recommendations: ' + error.message);
+            }
+        }
+
+        async function getServiceRecommendations(accountId, cluster, service) {
+            currentAccountId = accountId;
+            showLoading(`Getting recommendations for ${service}...`);
+            try {
+                const resp = await fetch(`/recommendations/${accountId}/${cluster}/${service}`);
+                const recs = await resp.json();
+                recs.service_name = service;
+                recs.cluster_name = cluster;
+                showRecommendations(recs, `Recommendations for ${service} (${cluster})`);
+            } catch (error) {
+                hideLoading();
+                alert('Error getting service recommendations: ' + error.message);
+            }
+        }
+
+        async function showServiceDetails(accountId, clusterName, serviceName) {
+            showLoading(`Loading details for ${serviceName}...`);
+            try {
+                const resp = await fetch(`/service-details/${accountId}/${clusterName}/${serviceName}`);
+                const details = await resp.json();
+                displayServiceDetails(details);
+            } catch (error) {
+                hideLoading();
+                alert('Error loading service details: ' + error.message);
+            }
+        }
+
+        async function refreshAccountData(accountId) {
+            showLoading('Refreshing account data...');
+            try {
+                const resp = await fetch(`/accounts/${accountId}/refresh`, {method: 'POST'});
+                const result = await resp.json();
+                hideLoading();
+                if (result.status === 'success') {
+                    alert('✅ Account data refreshed successfully!');
+                    loadAccounts();
+                } else {
+                    alert('❌ Error refreshing data: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                hideLoading();
+                alert('❌ Error refreshing account data: ' + error.message);
+            }
+        }
+
+        // Add modal functions from original dashboard
+        function showRecommendations(recs, title) {
+            hideLoading();
+            const modal = document.getElementById('recommendationsModal');
+            const content = document.getElementById('recommendationsContent');
+            document.getElementById('recommendationsTitle').textContent = title;
+
+            currentRecommendationContext = recs;
+
+            if (recs.error) {
+                content.innerHTML = `<div class="error">❌ ${recs.error}</div>`;
+            } else {
+                content.innerHTML = formatRecommendations(recs);
+            }
+
+            modal.style.display = 'block';
+        }
+
+        function formatRecommendations(recs) {
+            if (!recs || typeof recs !== 'object') {
+                return '<div class="error">❌ Invalid recommendation data received</div>';
+            }
+
+            if (recs.service_health) {
+                return formatServiceRecommendations(recs);
+            }
+
+            const health = recs.overall_health || 'unknown';
+            const summary = recs.summary || 'No summary available';
+
+            let html = `<div style="background: rgba(255,255,255,0.15); padding: 20px; border-radius: 15px; margin-bottom: 25px; backdrop-filter: blur(10px);">
+                <h3 style="color: white;">Overall Health: <span style="color: ${health === 'good' ? '#2ecc71' : health === 'warning' ? '#f39c12' : '#e74c3c'}; font-weight: bold;">${health.toUpperCase()}</span></h3>
+                <p style="color: white; font-size: 1.1em; line-height: 1.5;">${summary}</p>
+            </div>`;
+
+            if (recs.scaling_recommendations && Array.isArray(recs.scaling_recommendations) && recs.scaling_recommendations.length > 0) {
+                html += '<h4 style="color: white; margin: 20px 0 15px 0;">🔄 Scaling Recommendations:</h4>';
+                recs.scaling_recommendations.forEach(rec => {
+                    html += `<div style="background: rgba(255,255,255,0.1); padding: 15px; margin-bottom: 12px; border-radius: 12px; color: white;">
+                        <strong style="color: #74b9ff;">${rec.service || 'Unknown'} (${rec.cluster || 'Unknown'})</strong>: ${rec.action || 'No action'}<br>
+                        <em style="color: rgba(255,255,255,0.9);">${rec.reason || 'No reason provided'}</em>
+                    </div>`;
+                });
+            }
+
+            return html;
+        }
+
+        function formatServiceRecommendations(recs) {
+            const health = recs.service_health || 'unknown';
+            const action = recs.scaling_action || 'no_change';
+            const reason = recs.reason || 'No analysis available';
+            const priority = recs.priority || 'medium';
+            const recommendations = recs.recommendations || [];
+
+            let html = `<div style="background: rgba(255,255,255,0.15); padding: 20px; border-radius: 15px; margin-bottom: 25px; backdrop-filter: blur(10px);">
+                <h3 style="color: white;">Service Health: <span style="color: ${health === 'good' ? '#2ecc71' : health === 'warning' ? '#f39c12' : '#e74c3c'}; font-weight: bold;">${health.toUpperCase()}</span></h3>
+                <div style="margin: 15px 0;">
+                    <strong style="color: white;">Scaling Action:</strong>
+                    <span style="padding: 6px 12px; border-radius: 8px; background: ${action === 'scale_up' ? 'rgba(231,76,60,0.2)' : action === 'scale_down' ? 'rgba(46,204,113,0.2)' : 'rgba(149,165,166,0.2)'}; color: ${action === 'scale_up' ? '#e74c3c' : action === 'scale_down' ? '#2ecc71' : '#95a5a6'}; font-weight: bold;">
+                        ${action.replace('_', ' ').toUpperCase()}
+                    </span>
+                </div>
+                <div style="margin: 15px 0;">
+                    <strong style="color: white;">Priority:</strong>
+                    <span style="padding: 6px 12px; border-radius: 8px; background: ${priority === 'high' ? 'rgba(231,76,60,0.2)' : priority === 'medium' ? 'rgba(243,156,18,0.2)' : 'rgba(46,204,113,0.2)'}; color: ${priority === 'high' ? '#e74c3c' : priority === 'medium' ? '#f39c12' : '#2ecc71'}; font-weight: bold;">
+                        ${priority.toUpperCase()}
+                    </span>
+                </div>
+                <p style="margin: 20px 0 0 0; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 10px; color: white; line-height: 1.5;">${reason}</p>
+            </div>`;
+
+            if (recommendations && Array.isArray(recommendations) && recommendations.length > 0) {
+                html += '<h4 style="color: white; margin: 20px 0 15px 0;">💡 Recommendations:</h4>';
+                recommendations.forEach((rec, index) => {
+                    html += `<div style="background: rgba(255,255,255,0.1); padding: 15px; margin-bottom: 12px; border-radius: 12px; color: white;">
+                        <span style="font-weight: bold; color: #74b9ff; font-size: 1.1em;">${index + 1}.</span> <span style="color: white;">${rec}</span>
+                    </div>`;
+                });
+            }
+
+            return html;
+        }
+
+        function displayServiceDetails(details) {
+            hideLoading();
+            const modal = document.getElementById('serviceDetailsModal');
+            const title = document.getElementById('serviceDetailsTitle');
+            const content = document.getElementById('serviceDetailsContent');
+
+            title.textContent = `Service Details: ${details.service_name}`;
+
+            let html = `
+                <div style="background: rgba(52,73,94,0.8); padding: 25px; border-radius: 20px; margin-bottom: 25px;">
+                    <h3 style="color: #74b9ff; margin-bottom: 20px;">📋 Basic Information</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; color: #ecf0f1;">
+                        <div><strong style="color: #3498db;">Service Name:</strong> ${details.service_name}</div>
+                        <div><strong style="color: #3498db;">Cluster:</strong> ${details.cluster_name}</div>
+                        <div><strong style="color: #3498db;">Status:</strong> <span style="color: ${details.status === 'ACTIVE' ? '#2ecc71' : '#e74c3c'}; font-weight: bold;">${details.status}</span></div>
+                        <div><strong style="color: #3498db;">Running Tasks:</strong> ${details.running_count}</div>
+                        <div><strong style="color: #3498db;">Desired Tasks:</strong> ${details.desired_count}</div>
+                    </div>
+                </div>
+
+                <div style="background: rgba(52,73,94,0.8); padding: 25px; border-radius: 20px;">
+                    <h3 style="color: #fd79a8; margin-bottom: 20px;">📊 Resource Metrics</h3>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 25px;">
+                        <div style="background: rgba(116,185,255,0.15); padding: 20px; border-radius: 15px; text-align: center;">
+                            <h4 style="color: #74b9ff; margin-bottom: 15px;">🖥️ CPU Utilization</h4>
+                            <div style="font-size: 1.4em; font-weight: bold; color: #ecf0f1;">Average: ${details.cpu_avg}%</div>
+                            <div style="color: #bdc3c7;">Maximum: ${details.cpu_max}%</div>
+                        </div>
+                        <div style="background: rgba(253,121,168,0.15); padding: 20px; border-radius: 15px; text-align: center;">
+                            <h4 style="color: #fd79a8; margin-bottom: 15px;">💾 Memory Utilization</h4>
+                            <div style="font-size: 1.4em; font-weight: bold; color: #ecf0f1;">Average: ${details.memory_avg}%</div>
+                            <div style="color: #bdc3c7;">Maximum: ${details.memory_max}%</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            content.innerHTML = html;
+            modal.style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('recommendationsModal').style.display = 'none';
+            currentAccountId = null;
+            currentRecommendationContext = null;
+        }
+
+        function closeServiceDetailsModal() {
+            document.getElementById('serviceDetailsModal').style.display = 'none';
+        }
+
+        // Initialize the dashboard
+        loadUserInfo();
+        loadAccounts();
+        setInterval(loadAccounts, 30000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'ALB Listener Rule for Cognito Authentication'
+
+Parameters:
+  LoadBalancerArn:
+    Type: String
+    Description: 'ARN of the Application Load Balancer'
+
+  TargetGroupArn:
+    Type: String
+    Description: 'ARN of the Target Group'
+
+  UserPoolArn:
+    Type: String
+    Description: 'ARN of the Cognito User Pool'
+
+  UserPoolClientId:
+    Type: String
+    Description: 'Cognito User Pool Client ID'
+
+  UserPoolDomain:
+    Type: String
+    Description: 'Cognito User Pool Domain'
+
+Resources:
+  # HTTPS Listener with Cognito Authentication
+  ALBListenerHTTPS:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancerArn
+      Port: 443
+      Protocol: HTTPS
+      DefaultActions:
+        - Type: authenticate-cognito
+          AuthenticateCognitoConfig:
+            UserPoolArn: !Ref UserPoolArn
+            UserPoolClientId: !Ref UserPoolClientId
+            UserPoolDomain: !Ref UserPoolDomain
+            OnUnauthenticatedRequest: authenticate
+            Scope: 'openid email profile'
+            SessionCookieName: 'AWSELBAuthSessionCookie'
+            SessionTimeout: 86400  # 24 hours
+          Order: 1
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroupArn
+          Order: 2
+
+  # HTTP to HTTPS Redirect
+  ALBListenerHTTP:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancerArn
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: redirect
+          RedirectConfig:
+            Protocol: HTTPS
+            Port: 443
+            StatusCode: HTTP_301
+
+Outputs:
+  HTTPSListenerArn:
+    Description: 'HTTPS Listener ARN with Cognito Authentication'
+    Value: !Ref ALBListenerHTTPS
+
+  HTTPListenerArn:
+    Description: 'HTTP Listener ARN for redirect'
+    Value: !Ref ALBListenerHTTP

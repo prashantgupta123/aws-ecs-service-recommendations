@@ -1,0 +1,129 @@
+{
+  "ECSMonitoringPolicy": {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Action": [
+          "ecs:ListClusters",
+          "ecs:ListServices",
+          "ecs:DescribeServices",
+          "ecs:DescribeClusters",
+          "ecs:ListTasks",
+          "ecs:DescribeTasks",
+          "ecs:DescribeTaskDefinition",
+          "cloudwatch:GetMetricStatistics",
+          "application-autoscaling:DescribeScalableTargets",
+          "application-autoscaling:DescribeScalingPolicies",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams",
+          "logs:GetLogEvents",
+          "logs:FilterLogEvents",
+          "elasticloadbalancing:DescribeTargetGroups",
+          "elasticloadbalancing:DescribeLoadBalancers",
+          "elasticloadbalancing:DescribeTargetHealth"
+        ],
+        "Resource": "*"
+      }
+    ]
+  },
+  "DynamoDBKnowledgePolicy": {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Action": [
+          "dynamodb:CreateTable",
+          "dynamodb:PutItem",
+          "dynamodb:GetItem",
+          "dynamodb:Query",
+          "dynamodb:Scan",
+          "dynamodb:UpdateItem",
+          "dynamodb:DeleteItem"
+        ],
+        "Resource": [
+          "arn:aws:dynamodb:*:*:table/ecs-monitoring-knowledge",
+          "arn:aws:dynamodb:*:*:table/ecs-service-recommendation"
+        ]
+      }
+    ]
+  },
+  "BedrockPolicy": {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Action": [
+          "bedrock:InvokeModel"
+        ],
+        "Resource": "*"
+      }
+    ]
+  },
+  "SESEmailNotificationPolicy": {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Action": [
+          "ses:SendEmail",
+          "ses:SendRawEmail"
+        ],
+        "Resource": "*"
+      }
+    ]
+  },
+  "CombinedECSMonitoringPolicy": {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Action": [
+          "ecs:ListClusters",
+          "ecs:ListServices",
+          "ecs:DescribeServices",
+          "ecs:DescribeClusters",
+          "ecs:ListTasks",
+          "ecs:DescribeTasks",
+          "ecs:DescribeTaskDefinition",
+          "cloudwatch:GetMetricStatistics",
+          "application-autoscaling:DescribeScalableTargets",
+          "application-autoscaling:DescribeScalingPolicies",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams",
+          "logs:GetLogEvents",
+          "logs:FilterLogEvents",
+          "bedrock:InvokeModel",
+          "elasticloadbalancing:DescribeTargetGroups",
+          "elasticloadbalancing:DescribeLoadBalancers",
+          "elasticloadbalancing:DescribeTargetHealth"
+        ],
+        "Resource": "*"
+      },
+      {
+        "Effect": "Allow",
+        "Action": [
+          "dynamodb:CreateTable",
+          "dynamodb:PutItem",
+          "dynamodb:GetItem",
+          "dynamodb:Query",
+          "dynamodb:Scan",
+          "dynamodb:UpdateItem",
+          "dynamodb:DeleteItem"
+        ],
+        "Resource": [
+          "arn:aws:dynamodb:*:*:table/ecs-monitoring-knowledge",
+          "arn:aws:dynamodb:*:*:table/ecs-service-recommendation"
+        ]
+      },
+      {
+        "Effect": "Allow",
+        "Action": [
+          "ses:SendEmail",
+          "ses:SendRawEmail"
+        ],
+        "Resource": "*"
+      }
+    ]
+  }
+}

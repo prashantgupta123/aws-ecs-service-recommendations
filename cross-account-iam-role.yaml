@@ -1,0 +1,92 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Cross-account IAM role for ECS monitoring application'
+
+Parameters:
+  Name:
+    Type: String
+    Default: 'ECSMonitoringCrossAccountRole'
+    Description: 'Name for the IAM role'
+
+  TrustedAccountId:
+    Type: String
+    Description: 'AWS Account ID that will assume this role (monitoring app account)'
+    AllowedPattern: '[0-9]{12}'
+    ConstraintDescription: 'Must be a valid 12-digit AWS Account ID'
+
+Resources:
+  ECSMonitoringRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref Name
+      MaxSessionDuration: 14400
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${TrustedAccountId}:root'
+            Action: 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                'sts:ExternalId': 'ecs-monitoring-app'
+      ManagedPolicyArns:
+        - !Ref ECSMonitoringPolicy
+      Tags:
+        - Key: 'Name'
+          Value: !Ref Name
+        - Key: 'Project'
+          Value: 'ECSRecommendation'
+        - Key: 'Environment'
+          Value: 'prod'
+        - Key: 'CreatedBy'
+          Value: 'prashantgupta036@gmail.com'
+        - Key: 'Owner'
+          Value: 'prashantgupta036@gmail.com'
+
+  ECSMonitoringPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub '${Name}-Policy'
+      Description: 'Policy for ECS monitoring cross-account access'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'ecs:ListClusters'
+              - 'ecs:ListServices'
+              - 'ecs:DescribeServices'
+              - 'ecs:DescribeClusters'
+              - 'ecs:ListTasks'
+              - 'ecs:DescribeTasks'
+              - 'ecs:DescribeTaskDefinition'
+              - 'cloudwatch:GetMetricStatistics'
+              - 'application-autoscaling:DescribeScalableTargets'
+              - 'application-autoscaling:DescribeScalingPolicies'
+              - 'logs:DescribeLogGroups'
+              - 'logs:DescribeLogStreams'
+              - 'logs:GetLogEvents'
+              - 'logs:FilterLogEvents'
+              - 'elasticloadbalancing:DescribeTargetGroups'
+              - 'elasticloadbalancing:DescribeLoadBalancers'
+              - 'elasticloadbalancing:DescribeTargetHealth'
+            Resource: '*'
+
+Outputs:
+  RoleArn:
+    Description: 'ARN of the created cross-account role'
+    Value: !GetAtt ECSMonitoringRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-RoleArn'
+
+  RoleName:
+    Description: 'Name of the created role'
+    Value: !Ref ECSMonitoringRole
+    Export:
+      Name: !Sub '${AWS::StackName}-RoleName'
+
+  ExternalId:
+    Description: 'External ID to use when assuming the role'
+    Value: 'ecs-monitoring-app'
+    Export:
+      Name: !Sub '${AWS::StackName}-ExternalId'

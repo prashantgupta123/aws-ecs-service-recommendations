@@ -1,0 +1,55 @@
+{
+    "example-cluster": [
+        {
+            "name": "example-service-app",
+            "status": "ACTIVE",
+            "running_count": 2,
+            "desired_count": 2,
+            "cpu_avg": 1.5,
+            "cpu_max": 45.2,
+            "memory_avg": 35.8,
+            "memory_max": 42.1,
+            "target_groups": {
+                "example-service-app-public": {
+                    "healthy_hosts_avg": 2.0,
+                    "healthy_hosts_max": 2.0,
+                    "unhealthy_hosts_avg": 0.0,
+                    "unhealthy_hosts_max": 0.0,
+                    "response_time_avg": 0.125,
+                    "response_time_max": 2.345,
+                    "requests_avg": 250.5,
+                    "requests_max": 500.0,
+                    "http_error_percentage": 1.5,
+                    "total_2xx_count": 1500.0,
+                    "total_3xx_count": 50.0,
+                    "total_4xx_count": 25.0
+                },
+                "example-service-app-private": {
+                    "healthy_hosts_avg": 2.0,
+                    "healthy_hosts_max": 2.0,
+                    "unhealthy_hosts_avg": 0.0,
+                    "unhealthy_hosts_max": 0.0,
+                    "response_time_avg": 0.089,
+                    "response_time_max": 1.234,
+                    "requests_avg": 100.0,
+                    "requests_max": 200.0,
+                    "http_error_percentage": 0.5,
+                    "total_2xx_count": 800.0,
+                    "total_3xx_count": 10.0,
+                    "total_4xx_count": 5.0
+                }
+            }
+        },
+        {
+            "name": "example-service-logging",
+            "status": "ACTIVE",
+            "running_count": 1,
+            "desired_count": 1,
+            "cpu_avg": 0.3,
+            "cpu_max": 1.8,
+            "memory_avg": 2.5,
+            "memory_max": 3.2,
+            "target_groups": {}
+        }
+    ]
+}

@@ -1,0 +1,50 @@
+{
+    "overall_health": "healthy",
+    "scaling_recommendations": [
+        {
+            "cluster": "production-cluster",
+            "service": "web-application-service",
+            "action": "scale_up",
+            "reason": "High memory utilization (85.5%) and increasing traffic (5,000 requests) with CPU at 65%",
+            "suggested_capacity": {
+                "desired_count": 3,
+                "cpu": 2048,
+                "memory": 4096
+            }
+        },
+        {
+            "cluster": "staging-cluster",
+            "service": "api-service",
+            "action": "scale_down",
+            "reason": "Low CPU (5%) and memory utilization (10%) with minimal traffic",
+            "suggested_capacity": {
+                "desired_count": 1,
+                "cpu": 512,
+                "memory": 1024
+            }
+        }
+    ],
+    "performance_issues": [
+        {
+            "cluster": "production-cluster",
+            "service": "database-service",
+            "issue": "Elevated response time (500ms average)",
+            "severity": "medium",
+            "solution": "Review database query performance, add indexes, and consider implementing connection pooling"
+        }
+    ],
+    "cost_optimization": [
+        {
+            "cluster": "development-cluster",
+            "recommendation": "Scale down or temporarily suspend services with low utilization during off-hours",
+            "potential_savings": "40%"
+        },
+        {
+            "cluster": "staging-cluster",
+            "recommendation": "Consider using spot instances for non-critical workloads",
+            "potential_savings": "60%"
+        }
+    ],
+    "summary": "The ECS environment is generally healthy with minor optimization opportunities. One service requires scaling up due to increased load, while another can be scaled down to reduce costs. There is one performance issue requiring attention with database response times. Cost optimization potential exists in development and staging environments through better resource allocation and spot instance usage.",
+    "generated_at": "2025-01-06T10:30:00.000000"
+}

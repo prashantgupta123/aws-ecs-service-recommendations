@@ -1,0 +1,110 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Cognito User Pool for ECS Recommendations App with ALB Authentication'
+
+Parameters:
+  AppDomain:
+    Type: String
+    Default: 'aws-ecs-recommendations.cloudplatform.co.in'
+    Description: 'Domain name for the application'
+
+Resources:
+  # Cognito User Pool
+  ECSRecommendationsUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: 'ecs-recommendations-user-pool'
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+        - Name: name
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+      UserPoolTags:
+        Application: 'ECS-Recommendations'
+        Environment: 'Production'
+
+  # Cognito User Pool Domain
+  ECSRecommendationsUserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Sub 'ecs-recommendations-${AWS::AccountId}'
+      UserPoolId: !Ref ECSRecommendationsUserPool
+
+  # Cognito User Pool Client for ALB
+  ECSRecommendationsUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: 'ecs-recommendations-alb-client'
+      UserPoolId: !Ref ECSRecommendationsUserPool
+      GenerateSecret: true
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthScopes:
+        - openid
+        - email
+        - profile
+      AllowedOAuthFlowsUserPoolClient: true
+      CallbackURLs:
+        - !Sub 'https://${AppDomain}/oauth2/idpresponse'
+      LogoutURLs:
+        - !Sub 'https://${AppDomain}/'
+      SupportedIdentityProviders:
+        - COGNITO
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+
+Outputs:
+  UserPoolId:
+    Description: 'Cognito User Pool ID'
+    Value: !Ref ECSRecommendationsUserPool
+    Export:
+      Name: !Sub '${AWS::StackName}-UserPoolId'
+
+  UserPoolClientId:
+    Description: 'Cognito User Pool Client ID'
+    Value: !Ref ECSRecommendationsUserPoolClient
+    Export:
+      Name: !Sub '${AWS::StackName}-UserPoolClientId'
+
+  UserPoolClientSecret:
+    Description: 'Cognito User Pool Client Secret (for ALB configuration)'
+    Value: !GetAtt ECSRecommendationsUserPoolClient.ClientSecret
+    Export:
+      Name: !Sub '${AWS::StackName}-UserPoolClientSecret'
+
+  UserPoolDomain:
+    Description: 'Cognito User Pool Domain'
+    Value: !Sub 'https://${ECSRecommendationsUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com'
+    Export:
+      Name: !Sub '${AWS::StackName}-UserPoolDomain'
+
+  AuthorizationEndpoint:
+    Description: 'OAuth Authorization Endpoint'
+    Value: !Sub 'https://${ECSRecommendationsUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com/oauth2/authorize'
+
+  TokenEndpoint:
+    Description: 'OAuth Token Endpoint'
+    Value: !Sub 'https://${ECSRecommendationsUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com/oauth2/token'
+
+  UserInfoEndpoint:
+    Description: 'OAuth UserInfo Endpoint'
+    Value: !Sub 'https://${ECSRecommendationsUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com/oauth2/userInfo'
+
+  JWKSEndpoint:
+    Description: 'JWKS Endpoint for token verification'
+    Value: !Sub 'https://cognito-idp.${AWS::Region}.amazonaws.com/${ECSRecommendationsUserPool}/.well-known/jwks.json'

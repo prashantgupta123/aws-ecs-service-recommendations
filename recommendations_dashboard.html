@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ECS Recommendations Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #2c3e50 0%, #34495e 25%, #2c3e50 50%, #34495e 75%, #2c3e50 100%); background-size: 400% 400%; animation: gradientShift 15s ease infinite; min-height: 100vh; margin: 0; display: flex; }
+        .sidebar { width: 250px; background: rgba(44,62,80,0.95); backdrop-filter: blur(20px); border-right: 1px solid rgba(255,255,255,0.1); position: fixed; height: 100vh; z-index: 100; transition: all 0.3s; }
+        .sidebar-header { padding: 25px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .sidebar-title { color: #74b9ff; font-size: 1.3em; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        .sidebar-nav { padding: 20px 0; }
+        .nav-item { display: block; padding: 15px 25px; color: rgba(255,255,255,0.8); text-decoration: none; transition: all 0.3s; border-left: 3px solid transparent; }
+        .nav-item:hover { background: rgba(255,255,255,0.1); color: white; border-left-color: #74b9ff; }
+        .nav-item.active { background: rgba(116,185,255,0.2); color: #74b9ff; border-left-color: #74b9ff; }
+        .nav-item i { margin-right: 10px; width: 20px; text-align: center; }
+        .main-content { margin-left: 250px; flex: 1; padding: 20px; }
+        .sidebar-toggle { display: none; position: fixed; top: 20px; left: 20px; z-index: 101; background: rgba(116,185,255,0.2); color: #74b9ff; border: 1px solid rgba(116,185,255,0.4); padding: 10px; border-radius: 8px; cursor: pointer; backdrop-filter: blur(10px); }
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .main-content { margin-left: 0; }
+            .sidebar-toggle { display: block; }
+        }
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .container { max-width: 1400px; margin: 0 auto; width: 100%; }
+        .header { text-align: center; color: #2c3e50; margin-bottom: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); color: white; }
+        .header p { color: rgba(255,255,255,0.9); font-size: 1.1em; }
+        .nav-buttons { display: flex; gap: 15px; justify-content: center; margin-bottom: 30px; }
+        .nav-btn { background: rgba(116,185,255,0.2); color: #74b9ff; border: 1px solid rgba(116,185,255,0.4); padding: 12px 25px; border-radius: 25px; cursor: pointer; font-size: 16px; font-weight: bold; transition: all 0.3s; backdrop-filter: blur(10px); text-decoration: none; }
+        .nav-btn:hover { transform: translateY(-3px); background: rgba(116,185,255,0.3); box-shadow: 0 8px 25px rgba(116,185,255,0.2); }
+        .priority-section { background: rgba(255,255,255,0.1); border-radius: 25px; margin-bottom: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); overflow: hidden; backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.2); }
+        .priority-header { padding: 25px 30px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.3s; }
+        .priority-header:hover { background: rgba(255,255,255,0.05); }
+        .priority-header.high { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+        .priority-header.medium { background: linear-gradient(135deg, #f39c12, #e67e22); }
+        .priority-header.low { background: linear-gradient(135deg, #27ae60, #2ecc71); }
+        .priority-title { color: white; font-size: 1.6em; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        .priority-count { background: rgba(255,255,255,0.25); padding: 8px 15px; border-radius: 20px; font-size: 0.9em; font-weight: bold; color: white; backdrop-filter: blur(10px); }
+        .priority-toggle { color: white; font-size: 1.2em; transition: transform 0.3s; }
+        .priority-toggle.expanded { transform: rotate(90deg); }
+        .priority-content { padding: 0; display: none; }
+        .priority-content.expanded { display: block; }
+        .health-section { margin-bottom: 20px; }
+        .health-header { background: rgba(52,73,94,0.8); padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.3s; }
+        .health-header:hover { background: rgba(52,73,94,0.9); }
+        .health-title { color: white; font-size: 1.3em; font-weight: bold; }
+        .health-title.critical { color: #e74c3c; }
+        .health-title.warning { color: #f39c12; }
+        .health-title.error { color: #e67e22; }
+        .health-title.good { color: #2ecc71; }
+        .health-count { background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 15px; font-size: 0.85em; font-weight: bold; color: white; }
+        .health-toggle { color: white; font-size: 1em; transition: transform 0.3s; }
+        .health-toggle.expanded { transform: rotate(90deg); }
+        .health-content { padding: 0; display: none; background: rgba(255,255,255,0.05); }
+        .health-content.expanded { display: block; }
+        .recommendations-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; padding: 25px; }
+        .recommendation-card { background: rgba(44,62,80,0.8); border-radius: 20px; padding: 25px; box-shadow: 0 15px 35px rgba(0,0,0,0.2); transition: all 0.3s; color: #ecf0f1; backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); }
+        .recommendation-card:hover { transform: translateY(-8px); box-shadow: 0 20px 40px rgba(0,0,0,0.3); background: rgba(44,62,80,0.9); }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .service-name { color: #74b9ff; font-size: 1.2em; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        .scaling-action { padding: 6px 12px; border-radius: 15px; font-size: 0.8em; font-weight: bold; text-transform: uppercase; }
+        .scaling-action.scale_up { background: rgba(231,76,60,0.2); color: #e74c3c; border: 1px solid rgba(231,76,60,0.4); }
+        .scaling-action.scale_down { background: rgba(46,204,113,0.2); color: #2ecc71; border: 1px solid rgba(46,204,113,0.4); }
+        .scaling-action.no_change { background: rgba(149,165,166,0.2); color: #95a5a6; border: 1px solid rgba(149,165,166,0.4); }
+        .card-info { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px; }
+        .info-item { text-align: center; background: rgba(52,73,94,0.6); padding: 12px; border-radius: 12px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        .info-label { display: block; font-size: 0.85em; color: #bdc3c7; font-weight: 500; margin-bottom: 5px; }
+        .info-value { display: block; font-weight: bold; color: #ecf0f1; font-size: 1.1em; }
+        .recommendation-text { background: rgba(255,255,255,0.1); padding: 15px; border-radius: 12px; border-left: 4px solid #74b9ff; color: white; line-height: 1.5; backdrop-filter: blur(10px); font-size: 0.95em; }
+        .timestamp { color: #bdc3c7; font-size: 0.8em; text-align: right; margin-top: 15px; }
+        .loading-spinner { border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #loading { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(255,255,255,0.15); padding: 40px; border-radius: 25px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); text-align: center; z-index: 1001; backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.2); color: white; }
+        .empty-state { text-align: center; padding: 60px 30px; color: rgba(255,255,255,0.8); }
+        .empty-state h3 { font-size: 1.5em; margin-bottom: 15px; color: #74b9ff; }
+        .empty-state p { font-size: 1.1em; line-height: 1.6; }
+        .error { color: #e74c3c; padding: 20px; background: rgba(231,76,60,0.1); border-radius: 12px; backdrop-filter: blur(10px); text-align: center; }
+    </style>
+</head>
+<body>
+    <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-title">🏗️ ECS Monitor</div>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/" class="nav-item">
+                <i>📈</i> Analytics
+            </a>
+            <a href="/services-dashboard" class="nav-item">
+                <i>🏠</i> Services
+            </a>
+            <a href="/recommendations-dashboard" class="nav-item active">
+                <i>📊</i> Recommendations
+            </a>
+            <a href="/cluster-dashboard" class="nav-item">
+                <i>🎯</i> Cluster Analysis
+            </a>
+            <a href="/add-account" class="nav-item">
+                <i>➕</i> Add Account
+            </a>
+        </nav>
+    </div>
+
+    <div class="main-content">
+        <div class="container">
+        <div class="header">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                <div>
+                    <h1>📊 ECS Recommendations Dashboard</h1>
+                    <p>Service Recommendations from Knowledge Base - Grouped by Priority & Health Status</p>
+                </div>
+                <div id="userInfo" style="text-align: right; color: rgba(255,255,255,0.9); font-size: 0.9em;">
+                    <div style="background: rgba(255,255,255,0.15); padding: 12px 20px; border-radius: 15px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2);">
+                        <div style="font-weight: bold; margin-bottom: 4px;">👤 <span id="userName">Loading...</span></div>
+                        <div style="font-size: 0.85em; opacity: 0.8;">📧 <span id="userEmail">Loading...</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="nav-buttons">
+            <button class="nav-btn" onclick="loadRecommendations()">🔄 Refresh Data</button>
+            <button class="nav-btn" onclick="triggerDailyRecommendations()">🚀 Generate Latest Recommendations</button>
+        </div>
+
+        <div id="recommendations-container"></div>
+        </div>
+    </div>
+
+    <div id="loading"></div>
+
+    <script>
+        function showLoading(message) {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('loading').innerHTML = `<div class="loading-spinner"></div><p>${message}</p>`;
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        async function loadRecommendations() {
+            showLoading('Loading recommendations from knowledge base...');
+            try {
+                const response = await fetch('/all-recommendations');
+                const data = await response.json();
+                displayRecommendations(data);
+            } catch (error) {
+                hideLoading();
+                document.getElementById('recommendations-container').innerHTML =
+                    `<div class="error">❌ Error loading recommendations: ${error.message}</div>`;
+            }
+        }
+
+        function displayRecommendations(data) {
+            hideLoading();
+            const container = document.getElementById('recommendations-container');
+
+            if (data.error) {
+                container.innerHTML = `<div class="error">❌ ${data.error}</div>`;
+                return;
+            }
+
+            if (Object.keys(data).length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>📭 No Recommendations Found</h3>
+                        <p>No service recommendations are currently stored in the knowledge base.<br>
+                        Generate recommendations from the main dashboard first.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            const priorityOrder = ['high', 'medium', 'low'];
+            const healthOrder = ['critical', 'warning', 'error', 'good'];
+
+            priorityOrder.forEach(priority => {
+                if (data[priority]) {
+                    const totalCount = Object.values(data[priority]).reduce((sum, services) => sum + services.length, 0);
+
+                    html += `
+                        <div class="priority-section">
+                            <div class="priority-header ${priority}" onclick="togglePriority('${priority}')">
+                                <div class="priority-title">
+                                    ${priority === 'high' ? '🔴 HIGH PRIORITY' : priority === 'medium' ? '🟡 MEDIUM PRIORITY' : '🟢 LOW PRIORITY'}
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 15px;">
+                                    <span class="priority-count">${totalCount} Services</span>
+                                    <span class="priority-toggle" id="toggle-${priority}">▶</span>
+                                </div>
+                            </div>
+                            <div class="priority-content" id="content-${priority}">
+                    `;
+
+                    healthOrder.forEach(health => {
+                        if (data[priority][health]) {
+                            const services = data[priority][health];
+
+                            html += `
+                                <div class="health-section">
+                                    <div class="health-header" onclick="toggleHealth('${priority}-${health}')">
+                                        <div class="health-title ${health}">
+                                            ${health === 'critical' ? '💀 CRITICAL' :
+                                              health === 'warning' ? '⚠️ WARNING' :
+                                              health === 'error' ? '❌ ERROR' : '✅ GOOD'} Health
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 15px;">
+                                            <span class="health-count">${services.length} Services</span>
+                                            <span class="health-toggle" id="toggle-${priority}-${health}">▶</span>
+                                        </div>
+                                    </div>
+                                    <div class="health-content" id="content-${priority}-${health}">
+                                        <div class="recommendations-grid">
+                            `;
+
+                            services.forEach(service => {
+                                const recommendation = service.full_recommendation || {};
+                                const reason = recommendation.reason || 'No analysis available';
+                                const recommendations = recommendation.recommendations || [];
+
+                                html += `
+                                    <div class="recommendation-card">
+                                        <div class="card-header">
+                                            <div class="service-name">⚙️ ${service.service}</div>
+                                            <div class="scaling-action ${service.scaling_action}">${service.scaling_action.replace('_', ' ')}</div>
+                                        </div>
+                                        <div class="card-info">
+                                            <div class="info-item">
+                                                <span class="info-label">Account:</span>
+                                                <span class="info-value">${service.account_name || service.account_id}</span>
+                                            </div>
+                                            <div class="info-item">
+                                                <span class="info-label">Cluster:</span>
+                                                <span class="info-value">${service.cluster}</span>
+                                            </div>
+                                        </div>
+                                        <div class="recommendation-text">
+                                            <strong>Analysis:</strong><br>${reason}
+                                `;
+
+                                if (recommendations.length > 0) {
+                                    html += '<br><br><strong>Recommendations:</strong><ul style="margin: 10px 0 0 20px; line-height: 1.6;">';
+                                    recommendations.forEach(rec => {
+                                        html += `<li>${rec}</li>`;
+                                    });
+                                    html += '</ul>';
+                                }
+
+                                html += `
+                                        </div>
+                                        <div class="timestamp">
+                                            📅 ${new Date(service.timestamp).toLocaleString()}
+                                        </div>
+                                    </div>
+                                `;
+                            });
+
+                            html += `
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    });
+
+                    html += `
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            container.innerHTML = html;
+        }
+
+        function togglePriority(priority) {
+            const content = document.getElementById(`content-${priority}`);
+            const toggle = document.getElementById(`toggle-${priority}`);
+
+            if (content.classList.contains('expanded')) {
+                content.classList.remove('expanded');
+                toggle.classList.remove('expanded');
+                toggle.textContent = '▶';
+            } else {
+                content.classList.add('expanded');
+                toggle.classList.add('expanded');
+                toggle.textContent = '▼';
+            }
+        }
+
+        function toggleHealth(healthId) {
+            const content = document.getElementById(`content-${healthId}`);
+            const toggle = document.getElementById(`toggle-${healthId}`);
+
+            if (content.classList.contains('expanded')) {
+                content.classList.remove('expanded');
+                toggle.classList.remove('expanded');
+                toggle.textContent = '▶';
+            } else {
+                content.classList.add('expanded');
+                toggle.classList.add('expanded');
+                toggle.textContent = '▼';
+            }
+        }
+
+        async function loadUserInfo() {
+            try {
+                const resp = await fetch('/user-info');
+                const userInfo = await resp.json();
+                document.getElementById('userName').textContent = userInfo.name;
+                document.getElementById('userEmail').textContent = userInfo.email;
+            } catch (error) {
+                console.error('Error loading user info:', error);
+                document.getElementById('userName').textContent = 'Unknown User';
+                document.getElementById('userEmail').textContent = 'unknown@example.com';
+            }
+        }
+
+        async function triggerDailyRecommendations() {
+            showLoading('Generating latest recommendations for all accounts...');
+            try {
+                const response = await fetch('/trigger-daily-recommendations', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const result = await response.json();
+
+                if (response.ok) {
+                    hideLoading();
+                    alert('✅ Latest recommendations generated successfully! Refreshing data...');
+                    // Auto-refresh the recommendations after generation
+                    await loadRecommendations();
+                } else {
+                    throw new Error(result.detail || 'Failed to generate recommendations');
+                }
+            } catch (error) {
+                hideLoading();
+                alert(`❌ Error generating recommendations: ${error.message}`);
+            }
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('open');
+        }
+
+        // Load user info and recommendations on page load
+        loadUserInfo();
+        loadRecommendations();
+    </script>
+</body>
+</html>
